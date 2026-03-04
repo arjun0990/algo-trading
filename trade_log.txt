@@ -1,0 +1,90 @@
+[2026-02-26 14:56:25] Framework Started | Active Strategy: GTT
+[2026-02-26 14:57:17] Framework Started | Active Strategy: GTT
+[2026-02-26 14:58:20] Framework Started | Active Strategy: GTT
+[2026-02-26 14:58:27] Framework Started | Active Strategy: GTT
+[2026-02-26 14:59:24] Framework Started | Active Strategy: GTT
+[2026-02-26 15:00:50] Framework Started | Active Strategy: GTT
+[2026-02-26 15:07:17] Framework Started | Active Strategy: GTT
+[2026-02-26 15:11:35] All positions flattened successfully
+[2026-02-26 15:13:23] All positions flattened successfully
+[2026-02-26 15:14:24] All positions flattened successfully
+[2026-02-26 15:15:49] All positions flattened successfully
+[2026-02-26 15:17:27] All positions flattened successfully
+[2026-02-26 15:21:58] Framework Started | Active Strategy: GTT
+[2026-02-26 15:22:15] All positions flattened successfully
+[2026-02-26 15:23:08] Framework Started | Active Strategy: GTT
+[2026-02-26 15:23:38] All positions flattened successfully
+[2026-02-26 15:24:09] All positions flattened successfully
+[2026-02-26 15:24:34] All positions flattened successfully
+[2026-03-02 09:40:39] Framework Started | Active Strategy: GTT
+[2026-03-02 09:43:44] Framework Started | Active Strategy: GTT
+[2026-03-02 09:45:29] Framework Started | Active Strategy: GTT
+[2026-03-02 09:52:31] Framework Started | Active Strategy: GTT
+[2026-03-02 09:54:36] Framework Started | Active Strategy: GTT
+[2026-03-02 09:54:49] All positions flattened successfully
+[2026-03-02 09:54:58] All positions flattened successfully
+[2026-03-02 09:55:30] Framework Started | Active Strategy: GTT
+[2026-03-02 10:00:28] All positions flattened successfully
+[2026-03-02 10:02:51] Framework Started | Active Strategy: GTT
+[2026-03-02 10:03:14] All positions flattened successfully
+[2026-03-02 10:04:22] All positions flattened successfully
+[2026-03-02 10:04:56] All positions flattened successfully
+[2026-03-02 10:05:01] All positions flattened successfully
+[2026-03-02 10:05:16] Framework Started | Active Strategy: GTT
+[2026-03-02 10:10:38] All positions flattened successfully
+[2026-03-02 10:15:42] All positions flattened successfully
+[2026-03-02 10:18:23] All positions flattened successfully
+[2026-03-02 11:16:33] Framework Started | Active Strategy: GTT
+[2026-03-02 11:18:20] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:18:21] CRITICAL SYSTEM ERROR: 'AutoExitGTTStrategy' object has no attribute 'check_signal'
+[2026-03-02 11:19:54] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:19:54] CRITICAL SYSTEM ERROR: 'AutoExitGTTStrategy' object has no attribute 'check_signal'
+[2026-03-02 11:30:31] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:34:32] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:35:53] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:36:08] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:40:10] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:40:10] CRITICAL SYSTEM ERROR: 'AutoExitGTTStrategy' object has no attribute 'broker'
+[2026-03-02 11:43:32] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:43:32] CRITICAL SYSTEM ERROR: 'AutoExitGTTStrategy' object has no attribute 'broker'
+[2026-03-02 11:43:45] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:49:49] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 11:54:47] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 12:01:57] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 12:11:07] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 12:11:59] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 12:13:04] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 12:14:52] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 12:17:00] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 12:28:44] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:07:15] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:13:16] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:19:29] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:40:28] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:51:18] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:54:03] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:58:11] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 13:59:11] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:00:13] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:04:19] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:08:45] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:11:04] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:11:05] CRITICAL SYSTEM ERROR: can only concatenate str (not "list") to str
+[2026-03-02 14:11:22] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:11:41] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:12:01] CRITICAL SYSTEM ERROR: 'product_type'
+[2026-03-02 14:17:02] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:39:57] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:49:30] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 14:51:43] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 15:08:39] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 15:10:00] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 15:11:57] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 15:14:00] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 15:16:48] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 15:20:51] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 15:25:14] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 16:25:58] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 16:36:47] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 17:26:11] Framework Started | Active Strategy: AUTO_EXIT_GTT
+[2026-03-02 17:26:14] CRITICAL SYSTEM ERROR: 'charmap' codec can't encode character '\U0001f6a8' in position 38: character maps to <undefined>
