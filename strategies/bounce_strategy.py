@@ -166,7 +166,7 @@ class BounceStrategy:
             entry_level = (
                 s["low"] +
                 BOUNCE_CONFIG["bounce_points"] +
-                BOUNCE_CONFIG["entry_buffer"]
+                BOUNCE_CONFIG["entry_buffe"]
             )
 
             if s["ready"] and ltp >= entry_level:

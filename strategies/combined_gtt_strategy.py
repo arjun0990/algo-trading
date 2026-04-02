@@ -37,10 +37,16 @@ class CombinedGTTStrategy:
         #    Auto GTT must NOT interfere
         # -------------------------------------------------
         if self.manual.trade_active:
-            log("[COMBINED_GTT] Mode: MANUAL_GTT_ACTIVE")
+            # Ensure AutoExit is clean while manual GTT controls trade
+            self.auto.trade_active = False
+            self.auto.active_instrument = None
+            self.auto.target_gtt_id = None
+            self.auto.sl_gtt_id = None
+            # IMPORTANT: clear processing lock
+            self.auto.processing_instruments.clear()
             return
-        else:
-            log("[COMBINED_GTT] Mode: AUTO_MONITORING")
+        # else:
+            # log("[COMBINED_GTT] Mode: AUTO_MONITORING")
 
         # -------------------------------------------------
         # 3️⃣ If manual is not active,

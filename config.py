@@ -1,8 +1,70 @@
 
+
+import json
+
+# =========================================================
+# 🧭 INDEX CONFIGURATION
+# =========================================================
+
+# Select which index the engine will trade
+ACTIVE_INDEX = "NIFTY"
+# Options:
+# "NIFTY"
+# "SENSEX"
+
+# =========================================================
+# 🔁 STRATEGY SELECTION
+# =========================================================
+
+ACTIVE_STRATEGY = "INSTANT_FIRE"
+# Options:
+# INSTANT_FIRE
+# "BOUNCE"
+# COMBINED_GTT
+# "GTT"
+# INSTANT_EXPIRY_BLAST
+# COMBINED_INSTANT_ENGINE
+# AUTO_EXIT_GTT
+# "PIVOT"
+
+INDEX_CONFIG = {
+
+    "NIFTY": {
+
+        "segment": "NSE_FO",
+
+        # Index price source
+        "index_symbol": "NSE_INDEX|Nifty 50",
+
+        # Option contract details
+        "strike_step": 50,
+        "lot_size": 65,
+
+        # GTT limit
+        "max_gtt_quantity": 17550,
+        "atm_shift_threshold": 500
+    },
+
+    "SENSEX": {
+
+        "segment": "BSE_FO",
+
+        # Index price source
+        "index_symbol": "BSE_INDEX|SENSEX",
+
+        # Option contract details
+        "strike_step": 100,
+        "lot_size": 20,
+
+        # GTT limit
+        "max_gtt_quantity": 10020,
+        "atm_shift_threshold": 1500
+    }
+}
+
 # =========================================================
 # 🔐 BROKER AUTHENTICATION
 # =========================================================
-import json
 
 def load_access_token():
     try:
@@ -15,19 +77,6 @@ def load_access_token():
 ACCESS_TOKEN = load_access_token()
 
 # =========================================================
-# 🔁 STRATEGY SELECTION
-# =========================================================
-
-ACTIVE_STRATEGY = "COMBINED_GTT"
-# Options:
-# "BOUNCE"
-# "PIVOT"
-# COMBINED_GTT
-# "GTT"
-# AUTO_EXIT_GTT
-
-
-# =========================================================
 # 🛡 GLOBAL ENGINE SETTINGS (Shared Across All Strategies)
 # =========================================================
 
@@ -37,13 +86,11 @@ GLOBAL_CONFIG = {
     # Core Exchange Settings
     # -----------------------------------------------------
     "lot_size": 65,
-
-    # -----------------------------------------------------
     # Risk Protection
-    # -----------------------------------------------------
-    "enable_global_pnl_guard": True,
-    "max_daily_loss": -5000,
-    "max_daily_profit": 100,
+    # "enable_global_pnl_guard": True,
+    # "max_daily_loss": -5000,
+    # "max_daily_profit": 10000,
+
 
     # -----------------------------------------------------
     # Entry Protection
@@ -96,7 +143,7 @@ BOUNCE_CONFIG = {
     # Entry Logic
     # -----------------------------------------------------
     "bounce_points": 10,
-    "entry_buffer": 0,
+    "entry_buffe": 0,
     "min_premium": 50,
 
     # -----------------------------------------------------
@@ -185,7 +232,7 @@ GTT_CONFIG = {
     # 0  → ATM
     # 50 → CE = ATM + 50, PE = ATM - 50
     # 100 → CE = ATM + 100, PE = ATM - 100
-    "strike_offset": 50,
+    "strike_offset": 150,
 
     # ---------------------------------
     # Entry Configuration
@@ -220,8 +267,8 @@ GTT_CONFIG = {
 AUTO_EXIT_GTT_CONFIG = {
 
     # Exit Logic (points from average fill price)
-    "target_points": 2,
-    "sl_points": 20,
+    "target_points": 1,
+    "sl_points": 30,
 
     # Optional Trailing Stop
     "enable_trailing": False,
@@ -229,4 +276,123 @@ AUTO_EXIT_GTT_CONFIG = {
 
     # Polling Control
     "position_check_interval": 2  # seconds
+}
+
+# =========================================================
+# ⚡ INSTANT EXPIRY BLAST STRATEGY CONFIG
+# =========================================================
+
+INSTANT_EXPIRY_BLAST_CONFIG = {
+
+    # Liquidity detection
+    "liquidity_lookback_minutes": 15,
+
+    # Compression detection
+    "compression_factor": 0.6,
+    "volume_factor": 1.5,
+
+    # Premium acceleration
+    "premium_acceleration_pct": 0.2,
+    "acceleration_window_sec": 5,
+
+    # Volume surge confirmation
+    "volume_surge_factor": 2,
+
+    # Strike scanning
+    "strike_scan_range": 500,
+    "use_fixed_offsets": False,
+    "strike_offsets": [300],
+
+    # Filters
+    "min_option_premium": 3,
+    "enable_spread_filter": False,
+
+    # Exit logic
+    "fixed_spike_points": 10,
+    "percent_spike_target": 0.08
+}
+
+# =========================================================
+# 🔵 STREAMING CONFIG (WebSocket Clone Only)
+# =========================================================
+
+ENABLE_STREAMING = True   # Set True to enable WebSocket engine
+STREAM_CONFIG = {
+    "heartbeat_timeout_seconds": 30
+}
+
+OPTION_INTEL_CONFIG = {
+
+    # -------------------------
+    # RANGE
+    # -------------------------
+    "strike_range": 300,   # ✅ reduced (focus on real action)
+
+    # -------------------------
+    # LIQUIDITY FILTERS
+    # -------------------------
+    "min_oi": 200,        # ✅ was too low
+    "min_volume": 50,     # ✅ remove noise
+
+    # -------------------------
+    # SPIKE DETECTION
+    # -------------------------
+    "volume_spike_threshold": 1.6,   # ✅ tuned from data
+
+    # -------------------------
+    # WEIGHTS (REBALANCED)
+    # -------------------------
+    "gamma_weight": 0.30,   # 🔥 gamma dominant market
+    "delta_weight": 0.20,
+    "oi_weight": 0.25,      # 🔥 OI very important
+    "volume_weight": 0.15,
+    "structure_weight": 0.10,
+
+    # -------------------------
+    # GAMMA LOGIC
+    # -------------------------
+    "gamma_flip_threshold": 0,
+
+    # -------------------------
+    # SIGNAL THRESHOLDS
+    # -------------------------
+    "breakout_score": 70,    # 🔥 earlier detection
+    "strength_threshold": 55, # 🔥 faster entries
+
+    # -------------------------
+    # AUTO TRADE
+    # -------------------------
+    "auto_trade": False,
+}
+
+# =========================================================
+# ⚡ INSTANT ENGINE STRATEGY CONFIG
+# =========================================================
+
+INSTANT_ENGINE_CONFIG = {
+
+    # Position sizing (for keypress trades)
+    "lots": 5,
+
+    # Strike selection
+    "strike_offset": 350,
+
+    # Entry price buffer (below best ask)x
+    "entry_buffer": 0.9,
+    # Exit configuration
+    "target_points": 1,
+    "sl_points": 15,
+
+    # Entry timeout
+    "entry_timeout_ms": 900,
+
+    # Console position stabilization
+    "stabilization_ms": 150,
+
+    # Risk Protection===
+    "enable_global_pnl_guard": False,
+    "enable_trade_loss_guard": False,
+    "max_daily_loss": -5000,
+    "max_daily_profit": 10000,
+    "max_trade_loss": -1500,   # per trade loss
 }

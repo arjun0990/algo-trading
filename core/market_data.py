@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 from types import SimpleNamespace
 import urllib.parse
-
+from config import GTT_CONFIG, ACTIVE_INDEX, INDEX_CONFIG
 class MarketData:
 
     def __init__(self, broker):
@@ -22,7 +22,7 @@ class MarketData:
         if "|" in instrument_key:
             key = instrument_key
         else:
-            key = f"NSE_FO|{instrument_key}"
+            key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
 
         data = self.broker.safe_request(
             "GET",
@@ -61,13 +61,13 @@ class MarketData:
     def get_full_quote(self, instrument_key):
         print("Requesting full quote for:", instrument_key)
 
-        url = f"{self.broker.BASE_URL}/market-quote/quotes"
-
+        url = f"https://api.upstox.com/v2/market-quote/quotes?instrument_key={instrument_key}"
+        print(url)
         # Must send as comma-separated string (even single instrument)
         if "|" in instrument_key:
             symbol = instrument_key
         else:
-            symbol = f"NSE_FO|{instrument_key}"
+            symbol = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
 
         params = {"symbol": symbol}
 
@@ -117,7 +117,7 @@ class MarketData:
         if "|" in instrument_key:
             key = instrument_key
         else:
-            key = f"NSE_FO|{instrument_key}"
+            key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
         if self.is_market_live():
             # 🔵 LIVE MARKET
             url = f"{self.broker.BASE_URL}/historical-candle/intraday/{key}/minutes/1"
@@ -174,7 +174,7 @@ class MarketData:
         if "|" in instrument_key:
             key = instrument_key
         else:
-            key = f"NSE_FO|{instrument_key}"
+            key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
             print(f"{self.broker.BASE_URL}/historical-candle/intraday/{key}/{interval}/{to_time}/{from_time}")
         data = self.broker.safe_request(
             "GET",
@@ -194,7 +194,7 @@ class MarketData:
 
         # Ensure full key format
         if "|" not in instrument_key:
-            instrument_key = f"NSE_FO|{instrument_key}"
+            instrument_key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
 
         # Fetch last 2 completed 15min candles
         candles = self.get_historical_candles(
@@ -299,7 +299,7 @@ class MarketData:
         """
 
         # Construct full instrument key
-        instrument_key = f"NSE_FO|{instrument_token}"
+        instrument_key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_token}"
         encoded_key = quote(instrument_key, safe="")
 
         today = datetime.now().date()
@@ -357,7 +357,7 @@ class MarketData:
         }
     def get_intraday_1min_candles(self, instrument_key):
         # print("get_intraday_1min_candles instrument key:", instrument_key)
-        key = f"NSE_FO|{instrument_key}"
+        key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
         # encoded_key = urllib.parse.quote(key, safe='')
         print(f"{self.broker.BASE_URL}/historical-candle/intraday/{key}/minutes/1")
         url = f"{self.broker.BASE_URL}/historical-candle/intraday/{key}/minutes/1"
@@ -376,7 +376,7 @@ class MarketData:
 
     def get_latest_candle(self, instrument_key):
         # print("get_latest_candle instrument key:", instrument_key)
-        key = f"NSE_FO|{instrument_key}"
+        key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
         candles = self.get_intraday_1min_candles(key)
 
         if not candles or len(candles) < 1:
@@ -395,7 +395,7 @@ class MarketData:
 
     def get_previous_candle(self, instrument_key):
         # print("get_previous_candle instrument key:", instrument_key)
-        key = f"NSE_FO|{instrument_key}"
+        key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_key}"
         candles = self.get_intraday_1min_candles(key)
 
         if not candles or len(candles) < 2:

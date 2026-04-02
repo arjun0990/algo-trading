@@ -9,8 +9,8 @@ def log(msg):
         f.write(f"[{ts}] {msg}\n")
 
 
-def round_to_tick(price):
-    return round(price * 20) / 20
+def round_to_tick(price, tick=0.05):
+    return round(round(price / tick) * tick, 2)
 
 
 def manual_exit_pressed():

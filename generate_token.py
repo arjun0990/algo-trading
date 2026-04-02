@@ -6,8 +6,8 @@ import os
 # ===============================
 # CONFIG
 # ===============================
-API_KEY = "f37d21cc-ddfd-4202-98e5-86aa998e6a91"
-API_SECRET = "4thobro9zm"
+API_KEY = "12209892-be47-4120-8117-34a6e28a4e4c"
+API_SECRET = "s4t3349kw5"
 # API_KEY = os.getenv("f37d21cc-ddfd-4202-98e5-86aa998e6a91")
 # API_SECRET = os.getenv("4thobro9zm")
 REDIRECT_URI = "http://localhost:5000/callback"

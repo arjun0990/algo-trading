@@ -1,4 +1,5 @@
 from config import AUTO_EXIT_GTT_CONFIG
+from instant_fire import InstantFireStrategy
 from strategies.bounce_strategy import BounceStrategy
 from strategies.pivot_session_strategy import PivotSessionStrategy
 from strategies.auto_exit_gtt_strategy import AutoExitGTTStrategy
@@ -23,5 +24,17 @@ def get_strategy(strategy_name: str):
     if name == "COMBINED_GTT":
         from strategies.combined_gtt_strategy import CombinedGTTStrategy
         return CombinedGTTStrategy()
+
+    if name == "COMBINED_INSTANT_ENGINE":
+        from strategies.combined_instant_engine import CombinedInstantEngine
+        return CombinedInstantEngine()
+
+    if name == "INSTANT_FIRE":
+        from strategies.instant_fire import InstantFireStrategy
+        return InstantFireStrategy()
+
+    if name == "INSTANT_EXPIRY_BLAST":
+        from strategies.instant_expiry_blast_strategy import InstantExpiryBlastStrategy
+        return InstantExpiryBlastStrategy()
 
     raise ValueError(f"Invalid ACTIVE_STRATEGY in config.py: {strategy_name}")

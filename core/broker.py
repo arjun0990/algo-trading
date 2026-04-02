@@ -17,7 +17,10 @@ class BrokerClient:
             "accept": "application/json",
             "Authorization": f"Bearer {access_token}"
         }
-
+        # ---------------------------------
+        # Warm API Connection
+        # ---------------------------------
+        self._warm_connection()
         self.product_type = GLOBAL_CONFIG["product_type"]
         self.validity = GLOBAL_CONFIG["validity"]
 
@@ -61,6 +64,8 @@ class BrokerClient:
                     log(
                         f"[BROKER] HTTP Error {r.status_code} | URL: {url}"
                     )
+                    log(f"[BROKER ERROR] HTTP {r.status_code} | URL: {url}")
+                    log(f"[BROKER ERROR RAW] {r.text}")
                     return {"status": "error", "code": r.status_code}
 
                 # -------------------------------------------------
@@ -82,7 +87,12 @@ class BrokerClient:
                     f"[BROKER] Request Exception: {str(e)} | "
                     f"Retrying in {wait_time:.2f}s | Attempt {attempt + 1}/{max_retries}"
                 )
-
+                # If this was an order placement, check order book before retry
+                if "order/place" in url:
+                    orders = self.get_order_book()
+                    if orders:
+                        log("[BROKER] Order may already be placed. Skipping retry.")
+                        return {"status": "unknown"}
                 time.sleep(wait_time)
 
         # -------------------------------------------------
@@ -91,29 +101,17 @@ class BrokerClient:
         log("[BROKER] Max Retries Exceeded")
         return {"status": "error", "code": "max_retries_exceeded"}
 
-    # def safe_request(self, method, url, **kwargs):
-    #
-    #     try:
-    #         r = requests.request(method, url, headers=self.headers, timeout=10, **kwargs)
-    #
-    #         # print("STATUS CODE:", r.status_code)
-    #         # print("RAW RESPONSE:", r.text)
-    #
-    #         if r.status_code != 200:
-    #             return {"status": "error", "code": r.status_code}
-    #
-    #         # 🔥 IMPORTANT: parse only once
-    #         try:
-    #             data = r.json()
-    #         except Exception as e:
-    #             print("JSON PARSE FAILED:", str(e))
-    #             return {"status": "error", "code": "json_error"}
-    #
-    #         return data
-    #
-    #     except Exception as e:
-    #         print("REQUEST FAILED:", str(e))
-    #         return {"status": "error", "code": "request_exception"}
+    # =========================================================
+    # Warm API Connection
+    # =========================================================
+    def _warm_connection(self):
+        try:
+            # Lightweight call to establish session & TLS
+            self.get_positions()
+            log(f"[BROKER] API Connection Warmed.")
+        except Exception as e:
+            log(f"[BROKER] Warm-up Failed (Non-Critical): {e}")
+
     # =========================================================
     # ORDER FUNCTIONS
     # =========================================================
@@ -127,13 +125,59 @@ class BrokerClient:
         if not isinstance(payload.get("instrument_token"), str):
             payload["instrument_token"] = str(payload["instrument_token"])
 
-        print("DEBUG ORDER PAYLOAD:", payload)
+        log(f"[BROKER] DEBUG ORDER PAYLOAD: {payload}")
 
         return self.safe_request(
             "POST",
             f"{self.BASE_URL}/order/place",
             json=payload
         )
+
+    def modify_order(self, order_id, price, quantity=None, trigger_price=0):
+
+        if not order_id:
+            log("[BROKER] Modify order skipped → No order_id")
+            return None
+
+        if price <= 0:
+            log("[BROKER] Modify skipped → invalid price")
+            return None
+
+        payload = {
+            "order_id": order_id,
+            "price": price,
+            "validity": self.validity,
+            "order_type": "LIMIT",
+            "trigger_price": trigger_price,
+            "disclosed_quantity": 0
+        }
+
+        # Optional quantity update
+        if quantity:
+            payload["quantity"] = quantity
+
+        log(f"[BROKER] MODIFY ORDER PAYLOAD: {payload}")
+
+        data = self.safe_request(
+            "PUT",
+            "https://api-hft.upstox.com/v3/order/modify",
+            json=payload
+        )
+
+        # ---------------------------------
+        # RESPONSE HANDLING
+        # ---------------------------------
+        if not data:
+            log("[BROKER] Modify order failed → No response")
+            return None
+
+        if data.get("status") != "success":
+            log(f"[BROKER] Modify order failed → {data}")
+            return None
+
+        log(f"[BROKER] Modify success → {data.get('data', {})}")
+
+        return data
 
     def cancel_order(self, order_id):
 
@@ -215,19 +259,19 @@ class BrokerClient:
         )
 
         if not data:
-            print("Cancel pending orders: No response")
+            log(f"[BROKER] Cancel pending orders: No response")
             return False
 
             # If no pending orders exist, API may return 400
         if data.get("status") == "error" and data.get("code") == 400:
-            print("No pending regular orders to cancel.")
+            log(f"[BROKER] No pending regular orders to cancel.")
             return True
 
         if data.get("status") != "success":
-            print("Cancel pending orders failed:", data)
+            log(f"[BROKER] Cancel pending orders failed: {data}")
             return False
 
-        print("All pending regular orders cancelled successfully")
+        log(f"[BROKER] All pending regular orders cancelled successfully")
         return True
 
     # =========================================================
@@ -244,19 +288,19 @@ class BrokerClient:
         )
 
         if not data:
-            print("Position exit failed - No response")
+            log(f"[BROKER] Position exit failed - No response")
             return False
 
             # 👇 This is the important change
         if data.get("status") == "error" and data.get("code") == 400:
-            print("No open positions to exit.")
+            log(f"[BROKER] No open positions to exit.")
             return True
 
         if data.get("status") != "success":
-            print("Position exit failed:", data)
+            log(f"[BROKER] Position exit failed: {data}")
             return False
 
-        print("All positions exited successfully")
+        log(f"[BROKER] All positions exited successfully")
         return True
 
     # =========================================================
@@ -307,10 +351,10 @@ class BrokerClient:
 
         gtt_ids = data.get("data", {}).get("gtt_order_ids", [])
         if not gtt_ids:
-            print("❌ No GTT ID returned.")
+            log(f"[BROKER] ❌ No GTT ID returned.")
             return None
 
-        print("✅ GTT Placed:", gtt_ids[0])
+        log(f"[BROKER] ✅ GTT Placed:", gtt_ids[0])
         return gtt_ids[0]
 
     def modify_gtt_order(self, payload):
@@ -323,10 +367,10 @@ class BrokerClient:
         )
 
         if data.get("status") != "success":
-            print("❌ GTT Modify Failed:", data)
+            log(f"[BROKER] ❌ GTT Modify Failed:", data)
             return False
 
-        print("✅ GTT Modified")
+        log(f"[BROKER] ✅ GTT Modified")
         return True
 
     def cancel_gtt_order(self, gtt_order_id):
@@ -341,12 +385,12 @@ class BrokerClient:
             url,
             json=payload
         )
-        print("Cancel GTT Response:", data)
+        log(f"[BROKER] Cancel GTT Response:{data}")
         if data.get("status") != "success":
-            print("❌ GTT Cancel Failed:", data)
+            log(f"[BROKER] ❌ GTT Cancel Failed:{data}")
             return False
 
-        print("✅ GTT Cancelled:", gtt_order_id)
+        log(f"[BROKER]✅ GTT Cancelled:{gtt_order_id}")
         return True
 
     def get_all_gtt_orders(self):
