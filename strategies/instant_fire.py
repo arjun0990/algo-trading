@@ -3,6 +3,8 @@ from datetime import datetime
 import config
 from config import INSTANT_ENGINE_CONFIG, ACTIVE_INDEX, INDEX_CONFIG
 from core.utils import log, round_to_tick
+
+
 def read_command():
     try:
         with open("command.txt", "r") as f:
@@ -49,6 +51,7 @@ class InstantFireStrategy:
     self.partial_fill_order_id = None
     self.partial_filled_qty = 0
     self.partial_exit_in_progress = False
+    self.place_order_in_progress = False
     self.position_detect_time = None
     self.risk_engine = None
     self.lot_size = None
@@ -266,7 +269,7 @@ class InstantFireStrategy:
      if self.auto_exit_enabled:
 
          if (order_changed or position_changed) and not self.trade_active:
-    	     self._detect_new_position(broker)
+             self._detect_new_position(broker)
 
      # -------------------------------------------------
      # MONITOR EXIT (POSITION CHANGE)
@@ -554,22 +557,22 @@ class InstantFireStrategy:
     self.target_points += self.target_step
     log(f"[ADJUST] Target ↑ → {self.target_points}")
     self._update_exit_orders(broker, update_target=True)
-    clear_command()
+
    if cmd == "TGT_DOWN":
     self.target_points -= self.target_step
     log(f"[ADJUST] Target ↓ → {self.target_points}")
     self._update_exit_orders(broker, update_target=True)
-    clear_command()
+
    if cmd == "SL_UP":
     self.sl_points -= self.sl_step
     log(f"[ADJUST] SL ↑ → {self.sl_points}")
     self._update_exit_orders(broker, update_sl=True)
-    clear_command()
+
    if cmd == "SL_DOWN":
     self.sl_points += self.sl_step
     log(f"[ADJUST] SL ↓ → {self.sl_points}")
     self._update_exit_orders(broker, update_sl=True)
-    clear_command()
+
    return
 
 # =========================
@@ -587,7 +590,6 @@ class InstantFireStrategy:
    if self.lot_size:
     self.quantity = self.lots * self.lot_size
     log(f"[ENTRY_ENGINE] Lots Increased → {self.lots} lots ({self.quantity} qty)")
-    clear_command()
     return
 
 # LOT DECREASE
@@ -599,7 +601,6 @@ class InstantFireStrategy:
      log(f"[ENTRY_ENGINE] Lots Decreased → {self.lots} lots ({self.quantity} qty)")
     else:
      log("[ENTRY_ENGINE] Minimum 1 lot required")
-    clear_command()
     return
 
 # =========================
@@ -609,14 +610,12 @@ class InstantFireStrategy:
    self.order_in_progress = True
    self._place_trade("CE", broker, market_data)
    self.order_in_progress = False
-   clear_command()
    return
 
   if cmd == "PE":
    self.order_in_progress = True
    self._place_trade("PE", broker, market_data)
    self.order_in_progress = False
-   clear_command()
    return
 
 
@@ -761,6 +760,7 @@ class InstantFireStrategy:
     self.last_entry_instrument = None
     self.partial_exit_in_progress = False
     self.order_in_progress = False
+    self.place_order_in_progress = False
     # release duplicate protection locks
     self.processing_instruments.clear()
     self.processed_positions.clear()
@@ -795,11 +795,11 @@ class InstantFireStrategy:
 # -------------------------------------------------
  # MODIFICATION 2 : AFTER DETECTING BIG QUANTITIES OR SPLIT QUANTITIES[CONSIDERING MULTIPLE BUY ORDERS]
  def _detect_new_position(self, broker):
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 1")
+     log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED 1")
      # ---------------------------------
      # HARD GUARDS (NO DUPLICATES)
      # ---------------------------------
-     if self.trade_active or self.partial_exit_in_progress:
+     if self.trade_active or self.partial_exit_in_progress or self.target_order_id:
          return
 
      from datetime import datetime, timedelta
@@ -812,7 +812,7 @@ class InstantFireStrategy:
      orders = state_store.get_all_orders()
      if not orders:
          return
-
+     log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED 2")
      # ---------------------------------
      # STEP 1: FIND LATEST BUY INSTRUMENT
      # ---------------------------------
@@ -831,7 +831,7 @@ class InstantFireStrategy:
 
      if not latest_order:
          return
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 2")
+     log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED 3")
      instrument = latest_order.get("instrument_token")
      if not instrument:
          return
@@ -859,7 +859,7 @@ class InstantFireStrategy:
 
      if position_qty == 0:
          return
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 3")
+     log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED 4")
      # ---------------------------------
      # STEP 3: AGGREGATE FILLED BUY ORDERS
      # ---------------------------------
@@ -874,6 +874,9 @@ class InstantFireStrategy:
          if o.get("instrument_token") != instrument:
              continue
 
+         if o.get("order_ref_id") != latest_order.get("order_ref_id"):
+             continue
+
          if o.get("status", "").lower() != "complete":
              continue
 
@@ -885,7 +888,7 @@ class InstantFireStrategy:
          if order_ts:
              try:
                  order_time = datetime.strptime(order_ts, "%Y-%m-%d %H:%M:%S")
-                 if order_time < (self.position_detect_time - timedelta(seconds=5)):
+                 if order_time < (self.position_detect_time - timedelta(seconds=30)):
                      continue
              except (ValueError, TypeError):
                  continue
@@ -898,21 +901,22 @@ class InstantFireStrategy:
 
          total_filled += filled_qty
          weighted_price_sum += (filled_qty * avg_price)
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 4")
+     log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED 5")
+     log(f"[DEBUG] total_filled={total_filled} position_qty={position_qty}")
      # ---------------------------------
      # STEP 4: STRICT FULL-FILL MATCH
      # ---------------------------------
      if total_filled != position_qty:
          return  # still partial → do nothing
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 4-5")
+
      # ---------------------------------
      # STEP 5: TRUE ENTRY PRICE
      # ---------------------------------
      entry_price = weighted_price_sum / total_filled if total_filled > 0 else 0
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 5")
+     log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED 6")
      if entry_price <= 0:
          return
-
+     log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED 7")
      quantity = position_qty
 
      log(f"[EXIT_ENGINE] ⚡ AGGREGATED ENTRY DETECTED | Price: {entry_price} | Qty: {quantity}")
@@ -963,7 +967,6 @@ class InstantFireStrategy:
      # ---------------------------------
      self.processing_instruments.discard(instrument)
 
-
  def _place_bracket_orders(self, broker, instrument, entry_price, quantity, product):
 
      # ---------------------------------
@@ -973,11 +976,14 @@ class InstantFireStrategy:
          log("[EXIT_ENGINE] GTT enabled → skipping normal bracket")
          return False
 
+     if self.target_order_id:
+         return False
      # ---------------------------------
      # MINIMAL SAFETY CHECK (NON-BLOCKING)
      # ---------------------------------
      state_store = broker.data_provider.state_store
      current_qty = int(state_store.get_position(instrument) or 0)
+
      # Ensure position exists (no delay)
      if abs(current_qty) < quantity:
          log("[EXIT_ENGINE] Qty not ready → skip (ultra-fast mode)")
@@ -1010,6 +1016,10 @@ class InstantFireStrategy:
          "slice": True,
      }
 
+     if self.place_order_in_progress:
+        return False
+
+     self.place_order_in_progress = True
      target_id = broker.place_order(payload)
 
      # ---------------------------------
@@ -1018,14 +1028,21 @@ class InstantFireStrategy:
      if not target_id or target_id.get("status") != "success":
          log("[EXIT_ENGINE] ❌ Target placement failed (no retry to save latency)")
          self.processing_instruments.discard(instrument)
+         self.place_order_in_progress = False
          return False
 
      # ---------------------------------
      # STORE TARGET ID
      # ---------------------------------
-     self.target_order_id = target_id["data"]["order_ids"][0]
+     order_ids = target_id.get("data", {}).get("order_ids", [])
 
-     log(f"[EXIT_ENGINE] ⚡ Target placed | ID: {self.target_order_id}")
+     if order_ids:
+       self.target_order_id = order_ids[0]
+       log(f"[EXIT_ENGINE] ⚡ Target placed | ID: {self.target_order_id}")
+     else:
+       log("[EXIT_ENGINE] ❌ No valid order_id returned")
+       self.place_order_in_progress = False
+       return False
 
      # ---------------------------------
      # CLEAN PARTIAL STATE
@@ -1276,7 +1293,7 @@ class InstantFireStrategy:
          self.active_gtt_id = None
          self.partial_exit_in_progress = False
          self.order_in_progress = False
-
+         self.place_order_in_progress = False
          # duplicate protection reset
          self.processing_instruments.clear()
          self.processed_positions.clear()
