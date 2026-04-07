@@ -265,8 +265,11 @@ class InstantFireStrategy:
      # -------------------------------------------------
      if self.auto_exit_enabled:
 
-         if (order_changed or position_changed) and not self.trade_active:
-    	     self._detect_new_position(broker)
+         if order_changed and not self.trade_active:
+             self._detect_new_position(broker)
+
+         if position_changed and not self.trade_active:
+             self._detect_new_position(broker)
 
      # -------------------------------------------------
      # MONITOR EXIT (POSITION CHANGE)
@@ -554,22 +557,22 @@ class InstantFireStrategy:
     self.target_points += self.target_step
     log(f"[ADJUST] Target ↑ → {self.target_points}")
     self._update_exit_orders(broker, update_target=True)
-    clear_command()
+
    if cmd == "TGT_DOWN":
     self.target_points -= self.target_step
     log(f"[ADJUST] Target ↓ → {self.target_points}")
     self._update_exit_orders(broker, update_target=True)
-    clear_command()
+
    if cmd == "SL_UP":
     self.sl_points -= self.sl_step
     log(f"[ADJUST] SL ↑ → {self.sl_points}")
     self._update_exit_orders(broker, update_sl=True)
-    clear_command()
+
    if cmd == "SL_DOWN":
     self.sl_points += self.sl_step
     log(f"[ADJUST] SL ↓ → {self.sl_points}")
     self._update_exit_orders(broker, update_sl=True)
-    clear_command()
+
    return
 
 # =========================
@@ -587,7 +590,6 @@ class InstantFireStrategy:
    if self.lot_size:
     self.quantity = self.lots * self.lot_size
     log(f"[ENTRY_ENGINE] Lots Increased → {self.lots} lots ({self.quantity} qty)")
-    clear_command()
     return
 
 # LOT DECREASE
@@ -599,7 +601,6 @@ class InstantFireStrategy:
      log(f"[ENTRY_ENGINE] Lots Decreased → {self.lots} lots ({self.quantity} qty)")
     else:
      log("[ENTRY_ENGINE] Minimum 1 lot required")
-    clear_command()
     return
 
 # =========================
@@ -609,14 +610,12 @@ class InstantFireStrategy:
    self.order_in_progress = True
    self._place_trade("CE", broker, market_data)
    self.order_in_progress = False
-   clear_command()
    return
 
   if cmd == "PE":
    self.order_in_progress = True
    self._place_trade("PE", broker, market_data)
    self.order_in_progress = False
-   clear_command()
    return
 
 
@@ -795,7 +794,7 @@ class InstantFireStrategy:
 # -------------------------------------------------
  # MODIFICATION 2 : AFTER DETECTING BIG QUANTITIES OR SPLIT QUANTITIES[CONSIDERING MULTIPLE BUY ORDERS]
  def _detect_new_position(self, broker):
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 1")
+
      # ---------------------------------
      # HARD GUARDS (NO DUPLICATES)
      # ---------------------------------
@@ -831,7 +830,7 @@ class InstantFireStrategy:
 
      if not latest_order:
          return
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 2")
+
      instrument = latest_order.get("instrument_token")
      if not instrument:
          return
@@ -859,7 +858,7 @@ class InstantFireStrategy:
 
      if position_qty == 0:
          return
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 3")
+
      # ---------------------------------
      # STEP 3: AGGREGATE FILLED BUY ORDERS
      # ---------------------------------
@@ -885,7 +884,7 @@ class InstantFireStrategy:
          if order_ts:
              try:
                  order_time = datetime.strptime(order_ts, "%Y-%m-%d %H:%M:%S")
-                 if order_time < (self.position_detect_time - timedelta(seconds=5)):
+                 if order_time < (self.position_detect_time - timedelta(seconds=120)):
                      continue
              except (ValueError, TypeError):
                  continue
@@ -898,18 +897,18 @@ class InstantFireStrategy:
 
          total_filled += filled_qty
          weighted_price_sum += (filled_qty * avg_price)
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 4")
+
      # ---------------------------------
      # STEP 4: STRICT FULL-FILL MATCH
      # ---------------------------------
      if total_filled != position_qty:
          return  # still partial → do nothing
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 4-5")
+
      # ---------------------------------
      # STEP 5: TRUE ENTRY PRICE
      # ---------------------------------
      entry_price = weighted_price_sum / total_filled if total_filled > 0 else 0
-     log(f"[EXIT_ENGINE] ⚡ AGGREGATED DETECTED 5")
+
      if entry_price <= 0:
          return
 
@@ -964,6 +963,246 @@ class InstantFireStrategy:
      self.processing_instruments.discard(instrument)
 
 
+ # WORKING OLD : BEFORE ANY MODIFICATIONS 27/03/2026 evening working
+ # def _detect_new_position(self, broker):
+ #
+ #     if self.trade_active or self.partial_exit_in_progress:
+ #         return
+ #
+ #     state_store = broker.data_provider.state_store
+ #     positions = state_store.get_all_positions()
+ #
+ #     if not positions:
+ #         return
+ #
+ #     from datetime import datetime
+ #     self.position_detect_time = datetime.now()
+ #
+ #     for instrument, qty in positions.items():
+ #
+ #         # Prevent duplicate trigger while trade active
+ #         if instrument == self.active_instrument and self.trade_active:
+ #             continue
+ #
+ #         if instrument in self.processing_instruments:
+ #             continue
+ #
+ #         if instrument in self.processed_positions:
+ #             continue
+ #
+ #         qty = int(qty)
+ #
+ #         if qty == 0:
+ #             continue
+ #
+ #         log(f"[EXIT_ENGINE] Open Position | Instrument: {instrument} | Qty: {qty}")
+ #
+ #         # =========================================================
+ #         # UNIFIED ENTRY PRICE DETECTION (ENGINE + MANUAL)
+ #         # =========================================================
+ #
+ #         entry_price = None
+ #         orders = state_store.get_all_orders()
+ #
+ #         valid_buys = []
+ #
+ #         for o in orders.values():
+ #
+ #             if o.get("instrument_token") != instrument:
+ #                 continue
+ #
+ #             if o.get("transaction_type").upper() != "BUY":
+ #                 continue
+ #
+ #             if o.get("status", "").lower() != "complete":
+ #                 continue
+ #
+ #             valid_buys.append(o)
+ #
+ #         if not valid_buys:
+ #             continue
+ #
+ #         # 🔥 SORT BY ORDER_ID FIRST (MOST RELIABLE)
+ #         valid_buys.sort(
+ #             key=lambda x: (
+ #                 int(x.get("order_id") or 0),
+ #                 x.get("exchange_timestamp") or "",
+ #                 x.get("order_timestamp") or ""
+ #             ),
+ #             reverse=True
+ #         )
+ #
+ #         latest_buy = None
+ #         position_qty = abs(qty)
+ #
+ #         for o in valid_buys:
+ #
+ #             order_qty = int(o.get("quantity", 0))
+ #             filled_qty = int(o.get("filled_quantity", 0))
+ #             pending_qty = int(o.get("pending_quantity", 0))
+ #
+ #             # 🔴 STRICT MATCH CONDITIONS
+ #             if pending_qty != 0:
+ #                 continue
+ #
+ #             if filled_qty != order_qty:
+ #                 continue
+ #
+ #             if filled_qty != position_qty:
+ #                 continue
+ #
+ #             ts = o.get("exchange_timestamp")
+ #
+ #             if ts and self.position_detect_time:
+ #                 from datetime import datetime, timedelta
+ #
+ #                 order_time = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+ #
+ #                 if order_time < (self.position_detect_time - timedelta(seconds=60)):
+ #                     continue
+ #
+ #             latest_buy = o
+ #             break
+ #
+ #         if not latest_buy:
+ #             continue
+ #
+ #         entry_price = float(latest_buy.get("average_price", 0))
+ #
+ #         if entry_price <= 0:
+ #             continue
+ #
+ #         log(f"[EXIT_ENGINE] Entry Matched | Price: {entry_price}")
+ #
+ #         # 🔒 prevent duplicate exit placements
+ #         if instrument in self.processed_positions:
+ #             continue
+ #
+ #         if instrument in self.processing_instruments:
+ #             continue
+ #
+ #         self.processing_instruments.add(instrument)
+ #
+ #         if self.gtt_enabled:
+ #
+ #             log("[EXIT_ENGINE] Using GTT EXIT")
+ #
+ #             self._place_gtt_exit_orders(
+ #                 broker,
+ #                 instrument,
+ #                 entry_price,
+ #                 abs(qty)
+ #             )
+ #
+ #             success = True
+ #
+ #         else:
+ #
+ #             success = self._place_bracket_orders(
+ #                 broker,
+ #                 instrument,
+ #                 entry_price,
+ #                 abs(qty),
+ #                 "D"
+ #             )
+ #
+ #         if success:
+ #             self.trade_active = True
+ #             self.active_instrument = instrument
+ #             self.processed_positions.add(instrument)
+ #
+ #         return
+
+
+
+ # def _place_bracket_orders(self, broker, instrument, entry_price, quantity, product):
+ #     state_store = broker.data_provider.state_store
+ #     current_positions = state_store.get_all_positions()
+ #
+ #     if self.gtt_enabled:
+ #         log("GTT ENABLED. skipping placing normal bracket orders")
+ #         return False
+ #
+ #     qty1 = int(current_positions.get(instrument, 0))
+ #
+ #     time.sleep(0.05)
+ #
+ #     current_positions = state_store.get_all_positions()
+ #     qty2 = int(current_positions.get(instrument, 0))
+ #
+ #     if qty1 != qty2:
+ #         return False
+ #
+ #     if qty2 != quantity:
+ #         return False
+ #     if abs(qty2) > quantity:
+ #         log("[EXIT_ENGINE] Position mismatch detected → flattening")
+ #         broker.flatten_and_verify()
+ #         return False
+ #
+ #     target_price = round_to_tick(entry_price + INSTANT_ENGINE_CONFIG["target_points"])
+ #
+ #     log(
+ #         f"[EXIT_ENGINE] Placing Bracket | "
+ #         f"Entry: {entry_price} | Target: {target_price} | "
+ #         f"Qty: {quantity}"
+ #     )
+ #
+ #     # TARGET LIMIT
+ #
+ #     payload = {
+ #         "quantity": quantity,
+ #         "product": product,
+ #         "validity": "DAY",
+ #         "price": target_price,
+ #         "instrument_token": instrument,
+ #         "order_type": "LIMIT",
+ #         "transaction_type": "SELL",
+ #         "disclosed_quantity": 0,
+ #         "trigger_price": 0,
+ #         "is_amo": False,
+ #         "slice": True,
+ #     }
+ #
+ #     target_id = broker.place_order(payload)
+ #
+ #     if not target_id:
+ #         log("[EXIT_ENGINE] Target order failed. Retrying...")
+ #         target_id = broker.place_order({
+ #             "quantity": quantity,
+ #             "product": product,
+ #             "validity": "DAY",
+ #             "price": target_price,
+ #             "instrument_token": instrument,
+ #             "order_type": "LIMIT",
+ #             "transaction_type": "SELL",
+ #             "disclosed_quantity": 0,
+ #             "trigger_price": 0,
+ #             "is_amo": False,
+ #             "slice": True,
+ #         })
+ #
+ #     if not target_id:
+ #         log("[EXIT_ENGINE] ERROR: Target order failed")
+ #
+ #         self.processing_instruments.discard(instrument)
+ #
+ #         return False
+ #
+ #     if target_id and target_id.get("status") == "success":
+ #         self.target_order_id = target_id["data"]["order_ids"][0]
+ #     else:
+ #         self.target_order_id = None
+ #
+ #
+ #     log(f"[EXIT_ENGINE] Target placed | ID: {target_id}")
+ #     self.partial_fill_time = None
+ #     self.partial_fill_order_id = None
+ #     self.partial_filled_qty = 0
+ #     self.processing_instruments.discard(instrument)
+ #
+ #     return True
+
  def _place_bracket_orders(self, broker, instrument, entry_price, quantity, product):
 
      # ---------------------------------
@@ -978,6 +1217,7 @@ class InstantFireStrategy:
      # ---------------------------------
      state_store = broker.data_provider.state_store
      current_qty = int(state_store.get_position(instrument) or 0)
+
      # Ensure position exists (no delay)
      if abs(current_qty) < quantity:
          log("[EXIT_ENGINE] Qty not ready → skip (ultra-fast mode)")

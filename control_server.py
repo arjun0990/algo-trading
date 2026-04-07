@@ -7,24 +7,15 @@ app = Flask(__name__)
 
 # Shared command state
 
-last_command = None
-last_time = 0
 
 SECRET = "1234"   # change this later
 
-def set_command(cmd):
- global last_command, last_time
- last_command = cmd
- last_time = time.time()
- print(f"🔥 COMMAND RECEIVED FROM WEB: {cmd}")
 
-def get_command():
- global last_command
- return last_command
- 
-def clear_command():
-    global last_command
-    last_command = None
+def set_command(cmd):
+    with open("command.txt", "w") as f:
+        f.write(cmd)
+
+    print(f"🔥 COMMAND WRITTEN TO FILE: {cmd}")
 
 @app.route("/")
 def home():
