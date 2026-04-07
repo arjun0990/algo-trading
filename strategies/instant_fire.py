@@ -1,7 +1,6 @@
-import keyboard
 import time
 from datetime import datetime
-
+from control_server import get_command
 import config
 from config import INSTANT_ENGINE_CONFIG, ACTIVE_INDEX, INDEX_CONFIG
 from core.utils import log, round_to_tick
@@ -488,119 +487,124 @@ class InstantFireStrategy:
 
  def _handle_keypress(self, broker, market_data):
 
-    now = time.time()
 
-    if now - self.last_key_time < 0.3:
-        return
+  now = time.time()
 
-    if keyboard.is_pressed("up") or keyboard.is_pressed("e"):
-        self.last_key_time = now
-        self._end_session(broker)
-        return
+  cmd = get_command()
+  
+  # debounce
+  if cmd and (now - self.last_key_time < 0.3):
+    return
+  if cmd:
+   self.last_key_time = now
 
-    if keyboard.is_pressed("down") or keyboard.is_pressed("q"):
-        self.last_key_time = now
-        log("[EXIT_ENGINE] PRESSED DOWN TO EXIT ALL")
-        self._force_exit(broker)
-        return
+# =========================
+# EXIT / SESSION CONTROL
+# =========================
+  if cmd == "END":
+   self._end_session(broker)
+   return
 
-    if keyboard.is_pressed("g"):
-        self.last_key_time = now
-        self.gtt_enabled = True
-        log("[MODE] GTT EXIT ENABLED")
+  if cmd == "EXIT":
+   print("CMD RECEIVED:", cmd)
+   log("[EXIT_ENGINE] EXIT ALL TRIGGERED")
+   self._force_exit(broker)
+   return
 
-    if keyboard.is_pressed("n"):
-        self.last_key_time = now
-        self.gtt_enabled = False
-        log("[MODE] GTT EXIT DISABLED")
+# =========================
+# MODE TOGGLES
+# =========================
+  if cmd == "GTT_ON":
+   self.gtt_enabled = True
+   log("[MODE] GTT EXIT ENABLED")
+   return
 
-    # Pause auto exits
-    if keyboard.is_pressed("x"):
-        self.last_key_time = now
-        self.auto_exit_enabled = False
-        log("[EXIT_ENGINE] AUTO EXIT PAUSED")
+  if cmd == "GTT_OFF":
+   self.gtt_enabled = False
+   log("[MODE] GTT EXIT DISABLED")
+   return
 
-    # Resume auto exits
-    if keyboard.is_pressed("r"):
-        self.last_key_time = now
-        self.auto_exit_enabled = True
-        log("[EXIT_ENGINE] PRESSED R AUTO EXIT RESUMED ")
-        self._force_exit(broker)
+  if cmd == "AUTO_PAUSE":
+   self.auto_exit_enabled = False
+   log("[EXIT_ENGINE] AUTO EXIT PAUSED")
+   return
 
-    # -------------------------------------------------
-    # DYNAMIC EXIT ADJUSTMENT (ONLY WHEN TRADE ACTIVE)
-    # -------------------------------------------------
-    if self.trade_active:
+  if cmd == "AUTO_RESUME":
+   self.auto_exit_enabled = True
+   log("[EXIT_ENGINE] AUTO EXIT RESUMED")
+   self._force_exit(broker)
+   return
 
-        # TARGET INCREASE
-        if keyboard.is_pressed("="):
-            self.last_key_time = now
-            self.target_points += self.target_step
-            log(f"[ADJUST] Target ↑ → {self.target_points}")
-            self._update_exit_orders(broker, update_target=True)
+# =========================
+# TRADE ACTIVE ADJUSTMENTS
+# =========================
+  if self.trade_active:
+   if cmd == "TGT_UP":
+    self.target_points += self.target_step
+    log(f"[ADJUST] Target ↑ → {self.target_points}")
+    self._update_exit_orders(broker, update_target=True)
 
-        # TARGET DECREASE
-        if keyboard.is_pressed("-"):
-            self.last_key_time = now
-            self.target_points -= self.target_step
-            log(f"[ADJUST] Target ↓ → {self.target_points}")
-            self._update_exit_orders(broker, update_target=True)
+   if cmd == "TGT_DOWN":
+    self.target_points -= self.target_step
+    log(f"[ADJUST] Target ↓ → {self.target_points}")
+    self._update_exit_orders(broker, update_target=True)
 
-        # SL TIGHTEN (GTT ONLY)
-        if keyboard.is_pressed("'"):
-            self.last_key_time = now
-            self.sl_points -= self.sl_step
-            log(f"[ADJUST] SL ↑ → {self.sl_points}")
-            self._update_exit_orders(broker, update_sl=True)
+   if cmd == "SL_UP":
+    self.sl_points -= self.sl_step
+    log(f"[ADJUST] SL ↑ → {self.sl_points}")
+    self._update_exit_orders(broker, update_sl=True)
 
-        # SL LOOSEN (GTT ONLY)
-        if keyboard.is_pressed(";"):
-            self.last_key_time = now
-            self.sl_points += self.sl_step
-            log(f"[ADJUST] SL ↓ → {self.sl_points}")
-            self._update_exit_orders(broker, update_sl=True)
+   if cmd == "SL_DOWN":
+    self.sl_points += self.sl_step
+    log(f"[ADJUST] SL ↓ → {self.sl_points}")
+    self._update_exit_orders(broker, update_sl=True)
 
-    if self.trade_active:
-        return
+   return
 
-    if now - self.last_key_time < self.key_cooldown:
-        return
+# =========================
+# ENTRY BLOCK
+# =========================
+  if cmd is None and (now - self.last_key_time < self.key_cooldown):
+    return
 
-    if self.order_in_progress:
-        return
+  if self.order_in_progress:
+   return
 
-    # INCREASE LOTS
-    if keyboard.is_pressed("]"):
-        self.last_key_time = now
-        self.lots += 1
-        if self.lot_size:
-            self.quantity = self.lots * self.lot_size
-            log(f"[ENTRY_ENGINE] Lots Increased → {self.lots} lots ({self.quantity} qty)")
+# LOT INCREASE
+  if cmd == "LOTS_UP":
+   self.lots += 1
+   if self.lot_size:
+    self.quantity = self.lots * self.lot_size
+    log(f"[ENTRY_ENGINE] Lots Increased → {self.lots} lots ({self.quantity} qty)")
+    return
 
-    # DECREASE LOTS
-    if keyboard.is_pressed("["):
-        self.last_key_time = now
-        if self.lots > 1:
-            self.lots -= 1
-            if self.lot_size:
-                self.quantity = self.lots * self.lot_size
-                log(f"[ENTRY_ENGINE] Lots Decreased → {self.lots} lots ({self.quantity} qty)")
-        else:
-            log("[ENTRY_ENGINE] Minimum 1 lot required")
+# LOT DECREASE
+  if cmd == "LOTS_DOWN":
+   if self.lots > 1:
+    self.lots -= 1
+    if self.lot_size:
+     self.quantity = self.lots * self.lot_size
+     log(f"[ENTRY_ENGINE] Lots Decreased → {self.lots} lots ({self.quantity} qty)")
+    else:
+     log("[ENTRY_ENGINE] Minimum 1 lot required")
+    return
 
-    if keyboard.is_pressed("right"):
-        self.last_key_time = now
-        self.order_in_progress = True
-        self._place_trade("CE", broker, market_data)
-        self.order_in_progress = False
-        return
+# =========================
+# ENTRY TRIGGERS
+# =========================
+  if cmd == "CE":
+   self.order_in_progress = True
+   self._place_trade("CE", broker, market_data)
+   self.order_in_progress = False
+   return
 
-    if keyboard.is_pressed("left"):
-        self.last_key_time = now
-        self.order_in_progress = True
-        self._place_trade("PE", broker, market_data)
-        self.order_in_progress = False
-        return
+  if cmd == "PE":
+   self.order_in_progress = True
+   self._place_trade("PE", broker, market_data)
+   self.order_in_progress = False
+   return
+
+
 
 # ======================================================
 # PLACE ENTRY TRADE

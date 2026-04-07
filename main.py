@@ -20,7 +20,7 @@ from core.instruments import InstrumentManager
 from core.market_data import MarketData
 from core.execution_engine import ExecutionEngine
 from strategies.strategy_factory import get_strategy
-from strategies.combined_instant_engine import CombinedInstantEngine
+
 
 # =========================================================
 # INITIALIZE CORE COMPONENTS (CORRECT ORDER)

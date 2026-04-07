@@ -10,7 +10,7 @@ API_KEY = "12209892-be47-4120-8117-34a6e28a4e4c"
 API_SECRET = "s4t3349kw5"
 # API_KEY = os.getenv("f37d21cc-ddfd-4202-98e5-86aa998e6a91")
 # API_SECRET = os.getenv("4thobro9zm")
-REDIRECT_URI = "http://localhost:5000/callback"
+REDIRECT_URI = "https://161.118.160.104:5000/callback"
 
 
 
@@ -27,7 +27,8 @@ login_url = (
 )
 
 print("Opening browser for login...")
-webbrowser.open(login_url)
+print("\nOPEN THIS URL IN YOUR BROWSER:\n")
+print(login_url)
 
 # ===============================
 # STEP 2 — CAPTURE AUTH CODE
@@ -47,7 +48,7 @@ class AuthHandler(BaseHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
 
-server = HTTPServer(("localhost", 5000), AuthHandler)
+server = HTTPServer(("0.0.0.0", 5000), AuthHandler)
 server.handle_request()
 
 # ===============================
