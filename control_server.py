@@ -59,9 +59,15 @@ def cmd():
  set_command(c)
  return "OK"
 
-
 def run_server():
- app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        use_reloader=False,
+        threaded=True
+    )
+
 
 if __name__ == "__main__":
     run_server()

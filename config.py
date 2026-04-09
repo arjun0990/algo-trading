@@ -7,7 +7,7 @@ import json
 # =========================================================
 
 # Select which index the engine will trade
-ACTIVE_INDEX = "NIFTY"
+ACTIVE_INDEX = "SENSEX"
 # Options:
 # "NIFTY"
 # "SENSEX"
@@ -375,7 +375,7 @@ INSTANT_ENGINE_CONFIG = {
     "lots": 5,
 
     # Strike selection
-    "strike_offset": 350,
+    "strike_offset": 450,
 
     # Entry price buffer (below best ask)x
     "entry_buffer": 0.9,
