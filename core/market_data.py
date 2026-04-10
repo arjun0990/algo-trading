@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 from types import SimpleNamespace
 import urllib.parse
+import pytz
 from config import GTT_CONFIG, ACTIVE_INDEX, INDEX_CONFIG
 class MarketData:
 
@@ -11,6 +12,7 @@ class MarketData:
         self.MARKET_OPEN_MINUTE = 15
         self.MARKET_CLOSE_HOUR = 15
         self.MARKET_CLOSE_MINUTE = 30
+        self.IST = pytz.timezone("Asia/Kolkata")
 
 
         # ==========================
@@ -36,7 +38,7 @@ class MarketData:
         return None
 
     def is_market_live(self):
-        now = datetime.now()
+        now = datetime.now(self.IST)
 
         market_open = now.replace(
             hour=self.MARKET_OPEN_HOUR,
@@ -90,7 +92,7 @@ class MarketData:
         return None, None, None, None
 
     def is_market_live(self):
-        now = datetime.now()
+        now = datetime.now(self.IST)
 
         market_open = now.replace(hour=9, minute=15, second=0, microsecond=0)
         market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
@@ -98,7 +100,7 @@ class MarketData:
         return market_open <= now <= market_close
 
     def get_last_completed_trading_day(self):
-        today = datetime.now().date()
+        today = datetime.now(self.IST).date()
 
         if self.is_market_live():
             return today
@@ -167,7 +169,7 @@ class MarketData:
     # GET HISTORICAL CANDLES
     # ==========================
     def get_historical_candles(self, instrument_key, interval="minutes/1", minutes_back=15):
-        to_time = datetime.now()
+        to_time = datetime.now(self.IST)
         if to_time.hour > 15 or (to_time.hour == 15 and to_time.minute > 30):
             to_time = to_time.replace(hour=15, minute=29, second=0, microsecond=0)
         from_time = to_time - timedelta(minutes=minutes_back)
@@ -302,7 +304,7 @@ class MarketData:
         instrument_key = f"{INDEX_CONFIG[ACTIVE_INDEX]['segment']}|{instrument_token}"
         encoded_key = quote(instrument_key, safe="")
 
-        today = datetime.now().date()
+        today = datetime.now(self.IST).date()
 
         # --------------------------------------------------
         # Find previous trading day (skip weekends)

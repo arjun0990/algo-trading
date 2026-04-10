@@ -1,9 +1,10 @@
 LOG_FILE = "trade_log.txt"
-
+import pytz
 from datetime import datetime
 
 def log(msg):
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ist = pytz.timezone("Asia/Kolkata")
+    ts = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
     print(msg)
     with open("log.txt", "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {msg}\n")

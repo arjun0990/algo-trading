@@ -18,7 +18,6 @@ from core.broker import BrokerClient
 from core.risk_engine import RiskEngine
 from core.instruments import InstrumentManager
 from core.market_data import MarketData
-from core.execution_engine import ExecutionEngine
 from strategies.strategy_factory import get_strategy
 
 
@@ -87,10 +86,7 @@ instrument_manager = InstrumentManager()
 strategy = get_strategy(ACTIVE_STRATEGY)
 
 # 9️⃣ Execution Engine
-execution = ExecutionEngine(
-    broker=broker,
-    risk_engine=risk
-)
+
 
 log(f"Framework Started | Active Strategy: {ACTIVE_STRATEGY}")
 
@@ -134,19 +130,6 @@ try:
                 risk_engine=risk,
                 instruments=instrument_manager
             )
-
-        else:
-
-            signal = strategy.check_signal(
-                data_provider,
-                instrument_manager
-            )
-
-            if signal:
-                execution.execute(signal)
-
-                if hasattr(strategy, "reset_session"):
-                    strategy.reset_session()
 
 except Exception as e:
     log(f"CRITICAL SYSTEM ERROR: {e}")

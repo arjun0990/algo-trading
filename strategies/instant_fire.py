@@ -16,7 +16,8 @@ def read_command():
 
 
 def clear_command():
-    with open("command.txt", "w") as f:
+    CMD_FILE = os.path.join(os.path.dirname(__file__), "../command.txt")
+    with open(CMD_FILE, "w") as f:
         f.write("")
 
 class InstantFireStrategy:
@@ -72,7 +73,7 @@ class InstantFireStrategy:
     self.sl_points = INSTANT_ENGINE_CONFIG["sl_points"]
     self.target_step = 1
     self.sl_step = 1
-
+    clear_command()
     log(f"[INSTANT]\n======================================")
     log(f"INSTANT FIRE Entry Exit Strategy Active")
     log("━━━━━━━━━━ KEY CONTROLS ━━━━━━━━━━")
@@ -121,15 +122,6 @@ class InstantFireStrategy:
 # ======================================================
 # MAIN ENTRY
 # ======================================================
-
- CMD_FILE = os.path.join(os.path.dirname(__file__), "../command.txt")
-
- # 🔥 CLEAR COMMAND FILE ON START
- try:
-    open(CMD_FILE, "w").close()
-    log("[INIT] command.txt cleared on startup")
- except Exception as e:
-    log(f"[INIT ERROR] Failed to clear command file: {e}")
 
  def run(self, broker, market_data, risk_engine, instruments):
 
@@ -957,7 +949,8 @@ class InstantFireStrategy:
      self.processing_instruments.discard(instrument)
 
  def _place_bracket_orders(self, broker, instrument, entry_price, quantity, product, is_called):
-     now = time.time()
+     ist = pytz.timezone("Asia/Kolkata")
+     now = datetime.now(ist)
      if now - self.last_key_time < 0.3:
           return False
 
