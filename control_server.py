@@ -2,7 +2,10 @@
 from flask import Flask, request
 import threading
 import time
+import os
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CMD_FILE = os.path.join(BASE_DIR, "command.txt")
 app = Flask(__name__)
 
 # Shared command state
@@ -12,42 +15,133 @@ SECRET = "1234"   # change this later
 
 
 def set_command(cmd):
-    with open("command.txt", "w") as f:
+    with open(CMD_FILE, "w") as f:
         f.write(cmd)
 
     print(f"🔥 COMMAND WRITTEN TO FILE: {cmd}")
 
 @app.route("/")
 def home():
- return """ <h2>ALGO CONTROL</h2>
-	<button onclick="send('CE')">BUY CE</button><br><br>
-	<button onclick="send('PE')">BUY PE</button><br><br>
+ return """
+    <html>
+    <head>
+        <title>Algo Control</title>
 
-	<button onclick="send('EXIT')">EXIT</button><br><br>
-	<button onclick="send('END')">END SESSION</button><br><br>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #0f172a;
+                color: white;
+                text-align: center;
+            }
 
-	<button onclick="send('GTT_ON')">GTT ON</button>
-	<button onclick="send('GTT_OFF')">GTT OFF</button><br><br>
+            h2 {
+                margin-top: 20px;
+            }
 
-	<button onclick="send('AUTO_PAUSE')">AUTO PAUSE</button>
-	<button onclick="send('AUTO_RESUME')">AUTO RESUME</button><br><br>
+            .container {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                max-width: 500px;
+                margin: 40px auto;
+            }
 
-	<button onclick="send('TGT_UP')">TARGET +</button>
-	<button onclick="send('TGT_DOWN')">TARGET -</button><br><br>
+            button {
+                padding: 20px;
+                font-size: 18px;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                font-weight: bold;
 
-	<button onclick="send('SL_UP')">SL +</button>
-	<button onclick="send('SL_DOWN')">SL -</button><br><br>
+                background: coral;
+                color: white;
 
-	<button onclick="send('LOTS_UP')">LOTS +</button>
-	<button onclick="send('LOTS_DOWN')">LOTS -</button>
+                transition: all 0.15s ease;
+            }
 
-	<script>
-	function send(cmd){
-    	fetch('/cmd?key=1234&c=' + cmd)
-	}
-	</script>
-	"""
+            /* 🌟 HOVER EFFECT */
+            button:hover {
+                background: #ff7f50;   /* slightly brighter coral */
+                transform: scale(1.05);
+            }
 
+            /* 🔴 CLICK EFFECT */
+            button:active {
+                background: #ff5733;
+                transform: scale(0.95);
+            }
+                padding: 20px;
+                font-size: 18px;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                font-weight: bold;
+
+                background: coral;
+                color: white;
+
+                transition: all 0.15s ease;
+            }
+
+            button:active {
+                background: #ff5733;
+                transform: scale(0.95);
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <h2>⚡ ALGO CONTROL</h2>
+
+        <div class="container">
+
+            <button onclick="send(this,'CE')">BUY CE</button>
+            <button onclick="send(this,'PE')">BUY PE</button>
+
+            <button onclick="send(this,'EXIT')">EXIT</button>
+            <button onclick="send(this,'END')">END SESSION</button>
+
+            <button onclick="send(this,'GTT_ON')">GTT ON</button>
+            <button onclick="send(this,'GTT_OFF')">GTT OFF</button>
+
+            <button onclick="send(this,'AUTO_PAUSE')">AUTO PAUSE</button>
+            <button onclick="send(this,'AUTO_RESUME')">AUTO RESUME</button>
+
+            <button onclick="send(this,'TGT_UP')">TARGET +</button>
+            <button onclick="send(this,'TGT_DOWN')">TARGET -</button>
+
+            <button onclick="send(this,'SL_UP')">SL +</button>
+            <button onclick="send(this,'SL_DOWN')">SL -</button>
+
+            <button onclick="send(this,'LOTS_UP')">LOTS +</button>
+            <button onclick="send(this,'LOTS_DOWN')">LOTS -</button>
+
+        </div>
+
+        <script>
+        function send(btn, cmd){
+
+            // temporary color flash
+            btn.style.background = "#ff5733";
+
+            fetch('/cmd?key=1234&c=' + cmd)
+                .then(res => res.text())
+                .then(data => console.log(data))
+                .catch(err => console.error(err));
+
+            // revert back
+            setTimeout(() => {
+                btn.style.background = "coral";
+            }, 200);
+        }
+        </script>
+
+    </body>
+    </html>
+    """
 
 @app.route("/cmd")
 def cmd():
