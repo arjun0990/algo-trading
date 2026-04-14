@@ -621,17 +621,18 @@ class InstantFireStrategy:
 # ENTRY TRIGGERS
 # =========================
   if cmd == "CE":
+   clerar_command()
    self.order_in_progress = True
    self._place_trade("CE", broker, market_data)
    self.order_in_progress = False
-   clear_command()
    return
 
   if cmd == "PE":
+   # CLEAR COMMAND IMMEDIATELY AFTER USE
+   clear_command()
    self.order_in_progress = True
    self._place_trade("PE", broker, market_data)
    self.order_in_progress = False
-   clear_command()
    return
 
 
@@ -949,8 +950,7 @@ class InstantFireStrategy:
      self.processing_instruments.discard(instrument)
 
  def _place_bracket_orders(self, broker, instrument, entry_price, quantity, product, is_called):
-     ist = pytz.timezone("Asia/Kolkata")
-     now = datetime.now(ist)
+     now = time.time()
      if now - self.last_key_time < 0.3:
           return False
 

@@ -372,15 +372,15 @@ OPTION_INTEL_CONFIG = {
 INSTANT_ENGINE_CONFIG = {
 
     # Position sizing (for keypress trades)
-    "lots": 1,
+    "lots": 3,
 
     # Strike selection
-    "strike_offset": 0,
+    "strike_offset": 150,
 
     # Entry price buffer (below best ask)x
     "entry_buffer": 0.9,
     # Exit configuration
-    "target_points": 1.8,
+    "target_points": 1,
     "sl_points": 15,
 
     # Entry timeout
