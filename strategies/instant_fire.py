@@ -5,7 +5,10 @@ import config
 from config import INSTANT_ENGINE_CONFIG, ACTIVE_INDEX, INDEX_CONFIG
 from core.utils import log, round_to_tick
 import os
+import json
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATUS_FILE = os.path.join(BASE_DIR, "status.json")
 def read_command():
     try:
         with open("command.txt", "r") as f:
@@ -621,7 +624,7 @@ class InstantFireStrategy:
 # ENTRY TRIGGERS
 # =========================
   if cmd == "CE":
-   clerar_command()
+   clear_command()
    self.order_in_progress = True
    self._place_trade("CE", broker, market_data)
    self.order_in_progress = False
@@ -1252,6 +1255,21 @@ class InstantFireStrategy:
      except Exception as e:
          log(f"[GTT ERROR] Modify failed: {e}")
 
+ def update_ui_status(self, instrument, qty, pnl, entry_price, ltp):
+     try:
+         data = {
+             "instrument": instrument,
+             "qty": qty,
+             "pnl": round(pnl, 2),
+             "entry_price": entry_price,
+             "ltp": round(ltp, 2) if ltp else 0
+         }
+
+         with open(STATUS_FILE, "w") as f:
+             json.dump(data, f)
+
+     except Exception as e:
+         log(f"[STATUS ERROR] {e}")
  # -------------------------------------------------
  # Monitor Position
  # -------------------------------------------------
@@ -1269,7 +1287,23 @@ class InstantFireStrategy:
 
      qty = int(positions.get(self.active_instrument, 0))
      still_open = abs(qty) > 0
+     # 🔥 CALCULATE PnL (SAFE FALLBACK)
+     pnl = 0
+     try:
+         ltp = broker.data_provider.get_ltp(self.active_instrument)
+         if ltp and self.last_entry_price:
+             pnl = (ltp - self.last_entry_price) * qty
+     except:
+         pass
 
+     # 🔥 UPDATE UI
+     self.update_ui_status(
+         self.active_instrument,
+         qty,
+         pnl,
+         self.last_entry_price or 0,
+         ltp
+     )
      # -------------------------------------------------
      # POSITION CLOSED → HANDLE EXIT
      # -------------------------------------------------
@@ -1328,6 +1362,7 @@ class InstantFireStrategy:
          # strategy reset
          self.target_points = INSTANT_ENGINE_CONFIG["target_points"]
          self.sl_points = INSTANT_ENGINE_CONFIG["sl_points"]
-
+         # 🔥 CLEAR UI
+         self.update_ui_status(None, 0, 0, 0)
          log("[EXIT_ENGINE] Engine Reset Complete")
 
