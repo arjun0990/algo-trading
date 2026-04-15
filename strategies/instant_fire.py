@@ -67,6 +67,8 @@ class InstantFireStrategy:
     self.active_gtt_id = None
     self.exit_lock = False
     self.exit_triggered = False
+    self.target_gtt_id = None
+    self.sl_gtt_id = None
     self.base_payload_template = {
         "product": "D",
         "validity": "DAY",
@@ -793,6 +795,8 @@ class InstantFireStrategy:
     self.exit_triggered = False
     self.exit_lock = False
     self.active_gtt_id = None
+    self.target_gtt_id = None
+    self.sl_gtt_id = None
     log("[EXIT_ENGINE] AUTO EXIT RESUMED")
     self.target_points = INSTANT_ENGINE_CONFIG["target_points"]
     self.sl_points = INSTANT_ENGINE_CONFIG["sl_points"]
@@ -826,7 +830,7 @@ class InstantFireStrategy:
      # ---------------------------------
      # HARD GUARDS (NO DUPLICATES)
      # ---------------------------------
-     if self.trade_active or self.partial_exit_in_progress or self.target_order_id:
+     if self.trade_active or self.partial_exit_in_progress or self.target_order_id or self.active_gtt_id:
          return
 
      state_store = broker.data_provider.state_store
@@ -1070,58 +1074,92 @@ class InstantFireStrategy:
 
  def _place_gtt_exit_orders(self, broker, instrument, entry_price, quantity):
 
-         # Prevent duplicate GTT
-         if self.active_gtt_id:
-             log("[GTT] Already active → skipping")
-             return False
+     # -------------------------------------------------
+     # DUPLICATE PROTECTION
+     # -------------------------------------------------
+     if self.active_gtt_id:
+         log("[GTT] Already active → skipping")
+         return False
 
-         if not self.gtt_enabled:
-             log("GTT NOT ENABLED..skipping placing gtt exit orders.")
-             return False
-         # -------------------------------------------------
-         # CALCULATE TARGET & SL (BUY ONLY SYSTEM)
-         # -------------------------------------------------
-         target_price = round(entry_price + INSTANT_ENGINE_CONFIG["target_points"], 2)
-         sl_price = round(entry_price - INSTANT_ENGINE_CONFIG["sl_points"], 2)
+     if not self.gtt_enabled:
+         log("[GTT] Not enabled → skipping")
+         return False
 
-         # -------------------------------------------------
-         # BUILD RULES (NO ENTRY RULE)
-         # -------------------------------------------------
-         rules = [
-             {
-                 "strategy": "TARGET",
-                 "trigger_type": "IMMEDIATE",
-                 "trigger_price": target_price
-             },
-             {
-                 "strategy": "STOPLOSS",
-                 "trigger_type": "IMMEDIATE",
-                 "trigger_price": sl_price
-             }
-         ]
+     # -------------------------------------------------
+     # CALCULATE TARGET & SL
+     # -------------------------------------------------
+     target_price = round(entry_price + INSTANT_ENGINE_CONFIG["target_points"], 2)
+     sl_price = round(entry_price - INSTANT_ENGINE_CONFIG["sl_points"], 2)
 
-         # -------------------------------------------------
-         # BUILD PAYLOAD
-         # -------------------------------------------------
-         # payload = dict(self.base_payload_template)
-         payload: dict = dict(self.base_payload_template)
-         payload["type"] = "SINGLE"
-         payload["quantity"] = quantity
-         payload["instrument_token"] = instrument
-         payload["rules"] = rules
+     log(f"[GTT] Placing SIMPLE GTTs | Entry: {entry_price} | Target: {target_price} | SL: {sl_price} | Qty: {quantity}")
 
-         log(f"[GTT] Placing EXIT GTT | Qty: {quantity} | Entry: {entry_price}")
+     # -------------------------------------------------
+     # TARGET GTT (ABOVE)
+     # -------------------------------------------------
+     target_payload = dict(self.base_payload_template)
+     target_payload.update({
+         "type": "SINGLE",
+         "quantity": quantity,
+         "instrument_token": instrument,
+         "transaction_type": "SELL",
+         "rules": [{
+             "strategy": "ENTRY",
+             "trigger_type": "ABOVE",
+             "trigger_price": target_price
+         }]
+     })
 
-         gtt_id = broker.place_gtt_order(payload)
+     target_id = broker.place_gtt_order(target_payload)
 
-         if not gtt_id:
-             log("[GTT] Placement failed")
-             return False
+     if not target_id:
+         log("[GTT] Target failed → retry once")
+         target_id = broker.place_gtt_order(target_payload)
 
-         self.active_gtt_id = gtt_id
+     if not target_id:
+         log("[GTT ERROR] Target placement failed")
+         return False
 
-         log(f"[GTT] EXIT GTT ACTIVE → ID: {gtt_id}")
-         return True
+     # -------------------------------------------------
+     # STOPLOSS GTT (BELOW)
+     # -------------------------------------------------
+     sl_payload = dict(self.base_payload_template)
+     sl_payload.update({
+         "type": "SINGLE",
+         "quantity": quantity,
+         "instrument_token": instrument,
+         "transaction_type": "SELL",
+         "rules": [{
+             "strategy": "ENTRY",
+             "trigger_type": "BELOW",
+             "trigger_price": sl_price
+         }]
+     })
+
+     sl_id = broker.place_gtt_order(sl_payload)
+
+     if not sl_id:
+         log("[GTT] SL failed → retry once")
+         sl_id = broker.place_gtt_order(sl_payload)
+
+     if not sl_id:
+         log("[GTT ERROR] SL failed → cancelling target")
+
+         broker.cancel_gtt_order(target_id)
+         return False
+
+     # -------------------------------------------------
+     # SUCCESS
+     # -------------------------------------------------
+     self.target_gtt_id = target_id
+     self.sl_gtt_id = sl_id
+
+     # Keep one main flag for compatibility
+     self.active_gtt_id = target_id
+
+     log(f"[GTT] Target GTT ID: {target_id}")
+     log(f"[GTT] SL GTT ID: {sl_id}")
+
+     return True
 
 
  def _update_exit_orders(self, broker, update_target=False, update_sl=False):
@@ -1205,58 +1243,65 @@ class InstantFireStrategy:
 
  def _modify_gtt_orders(self, broker, target_price, sl_price, update_target, update_sl):
 
-     if not self.active_gtt_id:
-         return
-
      if not self.gtt_enabled:
-         log("GTT NOT ENABLED..skipping modifying gtt orders.")
+         log("[GTT] Not enabled → skip modify")
          return
 
-     rules = []
-
      # -----------------------------------
-     # TARGET
+     # MODIFY TARGET
      # -----------------------------------
-     if update_target:
+     if update_target and self.target_gtt_id:
 
          if target_price <= self.last_entry_price:
-             log("[WARNING] Invalid target → skipping")
+             log("[GTT WARNING] Invalid target → skipping")
          else:
-             rules.append({
-                 "type": "SINGLE",
-                 "strategy": "TARGET",
-                 "trigger_type": "IMMEDIATE",
-                 "trigger_price": target_price
-             })
+             try:
+                 payload = {
+                     "type": "SINGLE",
+                     "rules": [{
+                         "strategy": "ENTRY",
+                         "trigger_type": "ABOVE",
+                         "trigger_price": target_price
+                     }]
+                 }
+
+                 broker.modify_gtt_order(
+                     gtt_order_id=self.target_gtt_id,
+                     payload=payload
+                 )
+
+                 log(f"[GTT MODIFY] Target updated → {target_price}")
+
+             except Exception as e:
+                 log(f"[GTT ERROR] Target modify failed: {e}")
 
      # -----------------------------------
-     # SL
+     # MODIFY STOPLOSS
      # -----------------------------------
-     if update_sl:
+     if update_sl and self.sl_gtt_id:
 
          if sl_price >= self.last_entry_price:
-             log("[WARNING] Invalid SL → skipping")
+             log("[GTT WARNING] Invalid SL → skipping")
          else:
-             rules.append({
-                 "type": "SINGLE",
-                 "strategy": "STOPLOSS",
-                 "trigger_type": "IMMEDIATE",
-                 "trigger_price": sl_price
-             })
+             try:
+                 payload = {
+                     "type": "SINGLE",
+                     "rules": [{
+                         "strategy": "ENTRY",
+                         "trigger_type": "BELOW",
+                         "trigger_price": sl_price
+                     }]
+                 }
 
-     if not rules:
-         return
+                 broker.modify_gtt_order(
+                     gtt_order_id=self.sl_gtt_id,
+                     payload=payload
+                 )
 
-     try:
-         broker.modify_gtt_order(
-             gtt_order_id=self.active_gtt_id,
-             rules=rules
-         )
+                 log(f"[GTT MODIFY] SL updated → {sl_price}")
 
-         log(f"[GTT UPDATE] {rules}")
-
-     except Exception as e:
-         log(f"[GTT ERROR] Modify failed: {e}")
+             except Exception as e:
+                 log(f"[GTT ERROR] SL modify failed: {e}")
 
  def update_ui_status(self, instrument, qty, pnl, entry_price, ltp):
      try:
@@ -1348,7 +1393,8 @@ class InstantFireStrategy:
          self.last_entry_instrument = None
          self.target_order_id = None
          self.active_gtt_id = None
-
+         self.target_gtt_id = None
+         self.sl_gtt_id = None
          # execution flags
          self.partial_exit_in_progress = False
          self.order_in_progress = False
@@ -1359,7 +1405,6 @@ class InstantFireStrategy:
          # duplicate protection reset
          self.processing_instruments.clear()
          self.processed_positions.clear()
-
          # timing / tracking reset
          self.position_detect_time = None
          self.partial_fill_time = None
