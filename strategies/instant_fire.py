@@ -1089,13 +1089,11 @@ class InstantFireStrategy:
          # -------------------------------------------------
          rules = [
              {
-                 "type": "SINGLE",
                  "strategy": "TARGET",
                  "trigger_type": "IMMEDIATE",
                  "trigger_price": target_price
              },
              {
-                 "type": "SINGLE",
                  "strategy": "STOPLOSS",
                  "trigger_type": "IMMEDIATE",
                  "trigger_price": sl_price
@@ -1107,6 +1105,7 @@ class InstantFireStrategy:
          # -------------------------------------------------
          # payload = dict(self.base_payload_template)
          payload: dict = dict(self.base_payload_template)
+         payload["type"] = "OCO"
          payload["quantity"] = quantity
          payload["instrument_token"] = instrument
          payload["rules"] = rules
