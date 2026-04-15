@@ -1276,32 +1276,33 @@ class InstantFireStrategy:
 
  def _monitor_position(self, broker):
 
-     # ---------------------------------
-     # SAFETY: NO ACTIVE TRADE
-     # ---------------------------------
-     if not self.trade_active or not self.active_instrument:
-         return
-
      state_store = broker.data_provider.state_store
      positions = state_store.get_all_positions()
 
-     qty = int(positions.get(self.active_instrument, 0))
-     still_open = abs(qty) > 0
-     # 🔥 CALCULATE PnL (SAFE FALLBACK)
+     instrument = self.active_instrument
+
+     if not instrument or self.trade_active:
+         self.update_ui_status(None, 0, 0, 0, 0)
+         return
+
+     qty = int(positions.get(instrument, 0))
+     still_open= abs(qty>0)
      pnl = 0
      ltp = 0
 
-     if self.active_instrument and qty != 0:
-         try:
-             ltp = broker.data_provider.get_ltp(self.active_instrument)
-             if ltp and self.last_entry_price:
-                 pnl = (ltp - self.last_entry_price) * qty
-         except:
-             pass
+     try:
+         ltp = broker.data_provider.get_ltp(instrument) or 0
 
-     # 🔥 UPDATE UI
+         if qty != 0 and self.last_entry_price:
+             pnl = (ltp - self.last_entry_price) * qty
+
+     except Exception as e:
+         log(f"[LTP ERROR] {e}")
+
+     log(f"[UI DEBUG] inst={instrument} qty={qty} pnl={pnl} ltp={ltp}")
+
      self.update_ui_status(
-         self.active_instrument,
+         instrument,
          qty,
          pnl,
          self.last_entry_price or 0,
@@ -1366,6 +1367,6 @@ class InstantFireStrategy:
          self.target_points = INSTANT_ENGINE_CONFIG["target_points"]
          self.sl_points = INSTANT_ENGINE_CONFIG["sl_points"]
          # 🔥 CLEAR UI
-         self.update_ui_status(None, 0, 0, 0)
+         self.update_ui_status(None, 0, 0, 0,0)
          log("[EXIT_ENGINE] Engine Reset Complete")
 
