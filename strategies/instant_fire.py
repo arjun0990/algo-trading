@@ -1089,11 +1089,13 @@ class InstantFireStrategy:
          # -------------------------------------------------
          rules = [
              {
+                 "type": "SINGLE",
                  "strategy": "TARGET",
                  "trigger_type": "IMMEDIATE",
                  "trigger_price": target_price
              },
              {
+                 "type": "SINGLE",
                  "strategy": "STOPLOSS",
                  "trigger_type": "IMMEDIATE",
                  "trigger_price": sl_price
@@ -1222,6 +1224,7 @@ class InstantFireStrategy:
              log("[WARNING] Invalid target → skipping")
          else:
              rules.append({
+                 "type": "SINGLE",
                  "strategy": "TARGET",
                  "trigger_type": "IMMEDIATE",
                  "trigger_price": target_price
@@ -1236,6 +1239,7 @@ class InstantFireStrategy:
              log("[WARNING] Invalid SL → skipping")
          else:
              rules.append({
+                 "type": "SINGLE",
                  "strategy": "STOPLOSS",
                  "trigger_type": "IMMEDIATE",
                  "trigger_price": sl_price
@@ -1281,7 +1285,7 @@ class InstantFireStrategy:
 
      instrument = self.active_instrument
 
-     if not instrument or self.trade_active:
+     if not (instrument or self.trade_active):
          self.update_ui_status(None, 0, 0, 0, 0)
          return
 
