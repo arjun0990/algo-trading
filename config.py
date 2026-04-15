@@ -375,12 +375,12 @@ INSTANT_ENGINE_CONFIG = {
     "lots": 3,
 
     # Strike selection
-    "strike_offset": 150,
+    "strike_offset": 300,
 
     # Entry price buffer (below best ask)x
     "entry_buffer": 0.9,
     # Exit configuration
-    "target_points": 1,
+    "target_points": 10,
     "sl_points": 15,
 
     # Entry timeout

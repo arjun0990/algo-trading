@@ -1289,12 +1289,15 @@ class InstantFireStrategy:
      still_open = abs(qty) > 0
      # 🔥 CALCULATE PnL (SAFE FALLBACK)
      pnl = 0
-     try:
-         ltp = broker.data_provider.get_ltp(self.active_instrument)
-         if ltp and self.last_entry_price:
-             pnl = (ltp - self.last_entry_price) * qty
-     except:
-         pass
+     ltp = 0
+
+     if self.active_instrument and qty != 0:
+         try:
+             ltp = broker.data_provider.get_ltp(self.active_instrument)
+             if ltp and self.last_entry_price:
+                 pnl = (ltp - self.last_entry_price) * qty
+         except:
+             pass
 
      # 🔥 UPDATE UI
      self.update_ui_status(
