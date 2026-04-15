@@ -354,7 +354,7 @@ class BrokerClient:
             log(f"[BROKER] ❌ No GTT ID returned.")
             return None
 
-        log(f"[BROKER] ✅ GTT Placed:", gtt_ids[0])
+        log(f"[BROKER] ✅ GTT Placed: {gtt_ids[0]}")
         return gtt_ids[0]
 
     def modify_gtt_order(self, payload):
@@ -367,7 +367,7 @@ class BrokerClient:
         )
 
         if data.get("status") != "success":
-            log(f"[BROKER] ❌ GTT Modify Failed:", data)
+            log(f"[BROKER] ❌ GTT Modify Failed: {data}")
             return False
 
         log(f"[BROKER] ✅ GTT Modified")
