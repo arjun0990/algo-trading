@@ -1105,7 +1105,7 @@ class InstantFireStrategy:
          # -------------------------------------------------
          # payload = dict(self.base_payload_template)
          payload: dict = dict(self.base_payload_template)
-         payload["type"] = "OCO"
+         payload["type"] = "SINGLE"
          payload["quantity"] = quantity
          payload["instrument_token"] = instrument
          payload["rules"] = rules
